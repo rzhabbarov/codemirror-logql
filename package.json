@@ -1,6 +1,6 @@
 {
   "name": "codemirror-logql",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "LogQL language support for CodeMirror 6",
   "type": "module",
   "main": "dist/cjs/index.cjs.js",
@@ -10,7 +10,9 @@
     "require": "./dist/cjs/index.cjs.js"
   },
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "rollup -c"
   },
