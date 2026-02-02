@@ -1,0 +1,30 @@
+{
+  "name": "codemirror-logql-demo",
+  "version": "1.0.0",
+  "description": "\"LogQL syntax highlighting plugin for codemirror demo\"",
+  "license": "MIT",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack serve --mode development --open"
+  },
+  "devDependencies": {
+    "clean-webpack-plugin": "4.0.0",
+    "html-webpack-plugin": "5.6.6",
+    "typescript": "5.9.3",
+    "ts-loader": "9.5.4",
+    "webpack": "5.104.1",
+    "webpack-cli": "6.0.1",
+    "webpack-dev-server": "5.2.3"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/lint": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "codemirror": "6.0.2",
+    "codemirror-logql": "2.0.0"
+  }
+}

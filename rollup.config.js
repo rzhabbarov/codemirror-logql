@@ -12,33 +12,35 @@ export default [
       {
         file: 'dist/esm/index.esm.js',
         format: 'esm',
-        sourcemap: true
+        sourcemap: false,
       },
       {
         file: 'dist/cjs/index.cjs.js',
         format: 'cjs',
-        sourcemap: true,
+        sourcemap: false,
         exports: 'named'
       }
     ],
     external: [
+      '@codemirror/state',
+      '@codemirror/view',
       '@codemirror/autocomplete',
       '@codemirror/language',
       '@codemirror/lint',
-      '@codemirror/state',
-      '@codemirror/view',
       '@lezer/highlight',
-      '@grafana/lezer-logql'
+      '@lezer/lr',
     ],
     plugins: [
       cleaner({
         targets: ['./dist/'],
       }),
-      resolve(),
+      resolve({
+        resolveOnly: [/^(?!@codemirror|@lezer).*$/]
+      }),
       commonjs(),
       typescript({
         tsconfig: './tsconfig.json',
-        exclude: ['**/*.test.ts']
+        exclude: ['**/*.test.ts'],
       }),
       terser()
     ]

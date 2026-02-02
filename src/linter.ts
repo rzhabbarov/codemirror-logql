@@ -1,5 +1,5 @@
 import { syntaxTree } from '@codemirror/language';
-import { Diagnostic, linter } from '@codemirror/lint';
+import { type Diagnostic, linter } from '@codemirror/lint';
 
 export const createLogQLLinter = () => {
     return linter(view => {

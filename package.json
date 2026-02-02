@@ -1,16 +1,18 @@
 {
   "name": "codemirror-logql",
   "version": "1.0.0",
-  "description": "CodeMirror 6 extension for LogQL syntax highlighting and autocompletion",
+  "description": "LogQL language support for CodeMirror 6",
+  "type": "module",
   "main": "dist/cjs/index.cjs.js",
   "module": "dist/esm/index.esm.js",
+  "exports": {
+    "import": "./dist/esm/index.esm.js",
+    "require": "./dist/cjs/index.cjs.js"
+  },
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
-    "build": "rollup --config rollup.config.js",
-    "build:ts": "tsc",
-    "build:rollup": "rollup -c",
-    "prepublishOnly": "npm run build"
+    "build": "rollup -c"
   },
   "repository": {
     "type": "git",
@@ -22,14 +24,17 @@
     "url": "https://github.com/rzhabbarov/codemirror-logql/issues"
   },
   "homepage": "https://github.com/rzhabbarov/codemirror-logql#readme",
-  "peerDependencies": {
-    "@codemirror/autocomplete": "6.18.6",
-    "@codemirror/language": "6.11.1",
-    "@codemirror/lint": "6.8.5",
-    "@codemirror/state": "6.5.2",
-    "@codemirror/view": "6.37.1",
-    "@lezer/highlight": "1.2.1",
+  "dependencies": {
     "@grafana/lezer-logql": "0.2.7"
+  },
+  "peerDependencies": {
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/lint": "^6.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "@lezer/lr": "^1.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "28.0.3",
@@ -50,6 +55,8 @@
     "grafana",
     "editor",
     "syntax",
-    "autocomplete"
+    "autocomplete",
+    "code",
+    "language"
   ]
 }

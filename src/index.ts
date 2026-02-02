@@ -1,10 +1,9 @@
 import { LRLanguage, LanguageSupport } from '@codemirror/language';
-import { Extension, EditorState } from '@codemirror/state';
+import { Extension } from '@codemirror/state';
 import { parser } from '@grafana/lezer-logql';
 import { styleTags, tags as t } from '@lezer/highlight';
 import { autocompletion } from '@codemirror/autocomplete';
-import { createLogQLCompletionSource, STATIC_COMPLETIONS } from './completion';
-import { clearCache, clearLabelCache, clearValueCache } from './utils';
+import { CompletionConfig, createLogQLCompletionSource } from './completion';
 import { createLogQLLinter } from './linter';
 
 export const logqlSyntax = LRLanguage.define({
@@ -40,51 +39,37 @@ export const logqlSyntax = LRLanguage.define({
     languageData: {
         closeBrackets: { brackets: ['(', '[', '{', '\'', '"', '`'] },
         commentTokens: { line: '#' },
-},
+    },
 });
 
-export interface LogQLExtensionConfig {
-  lokiUrl: string;
-  enableCompletion?: boolean;
-  cacheDuration?: number;
-  fetchOptions?: RequestInit;
+interface LogQLExtensionConfig {
+    completion?: CompletionConfig;
+    linterEnabled?: boolean;
 }
 
-export function logqlExtension(config: LogQLExtensionConfig): Extension {
-  const {
-    lokiUrl,
-    enableCompletion = true,
-    cacheDuration = 300_000,
-    fetchOptions
-  } = config;
-  
-  const extensions: Extension[] = [
-    logqlSyntax,
-  ];
-  
-  if (enableCompletion) {
-    extensions.push(
-      autocompletion({
-        override: [createLogQLCompletionSource({
-          lokiUrl,
-          cacheDuration,
-          fetchOptions
-        })]
-      })
-    );
-  }
+export function logqlExtension(config: LogQLExtensionConfig = {}): Extension {
+    const {
+        completion,
+        linterEnabled,
+    } = config;
 
-  extensions.push([createLogQLLinter()]);
-  
-  return new LanguageSupport(logqlSyntax, extensions);
+    const extensions: Extension[] = [
+        logqlSyntax,
+    ];
 
+    if (completion) {
+        extensions.push(
+          autocompletion({
+              override: [createLogQLCompletionSource(completion)]
+          })
+        );
+    }
+
+    if (linterEnabled) {
+        extensions.push([createLogQLLinter()]);
+    }
+
+    return new LanguageSupport(logqlSyntax, extensions);
 }
-
-export { 
-  STATIC_COMPLETIONS,
-  clearCache,
-  clearLabelCache,
-  clearValueCache
-};
 
 export default logqlExtension;

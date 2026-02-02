@@ -1,78 +1,8 @@
 import { Completion, CompletionContext } from '@codemirror/autocomplete';
-import { syntaxTree } from '@codemirror/language';
-import { labelCache, valueCache } from './utils';
 
 export interface CompletionConfig {
-  lokiUrl: string;
-  cacheDuration: number;
-  fetchOptions?: RequestInit;
-}
-
-async function fetchLabels(config: CompletionConfig): Promise<string[]> {
-  const { lokiUrl, cacheDuration, fetchOptions } = config;
-  const cacheKey = lokiUrl;
-  const now = Date.now();
-  
-  if (labelCache.has(cacheKey)) {
-    const entry = labelCache.get(cacheKey)!;
-    if (now - entry.timestamp < cacheDuration) {
-      return entry.data;
-    }
-  }
-  
-  try {
-    const response = await fetch(`${lokiUrl}/loki/api/v1/labels`, fetchOptions);
-    const { data } = await response.json();
-    
-    labelCache.set(cacheKey, {
-      timestamp: now,
-      data
-    });
-    
-    return data;
-  } catch (error) {
-    console.error('Loki labels fetch error:', error);
-    return [];
-  }
-}
-
-async function fetchLabelValues(
-  config: CompletionConfig,
-  label: string
-): Promise<string[]> {
-  const { lokiUrl, cacheDuration, fetchOptions } = config;
-  const cacheKey = lokiUrl;
-  const now = Date.now();
-  
-  if (!valueCache.has(cacheKey)) {
-    valueCache.set(cacheKey, new Map());
-  }
-  const urlCache = valueCache.get(cacheKey)!;
-  
-  if (urlCache.has(label)) {
-    const entry = urlCache.get(label)!;
-    if (now - entry.timestamp < cacheDuration) {
-      return entry.data;
-    }
-  }
-  
-  try {
-    const response = await fetch(
-      `${lokiUrl}/loki/api/v1/label/${label}/values`,
-      fetchOptions
-    );
-    const { data } = await response.json();
-    
-    urlCache.set(label, {
-      timestamp: now,
-      data
-    });
-    
-    return data;
-  } catch (error) {
-    console.error('Loki values fetch error:', error);
-    return [];
-  }
+  getLabels(): Promise<string[]> | string[];
+  getValues(label?: string): Promise<string[]> | string[];
 }
 
 export const STATIC_COMPLETIONS: Completion[] = [
@@ -113,63 +43,58 @@ export const STATIC_COMPLETIONS: Completion[] = [
 export function createLogQLCompletionSource(config: CompletionConfig) {
   return async (context: CompletionContext) => {
     const { state, pos } = context;
-    const tree = syntaxTree(state);
-    const node = tree.resolveInner(pos, -1);
+    const textBefore = state.sliceDoc(0, pos);
+    const lineBefore = textBefore.split('\n').pop() || '';
+    const lastOpenBrace = textBefore.lastIndexOf('{');
+    const lastCloseBrace = textBefore.lastIndexOf('}');
+    const isInsideBraces = lastOpenBrace > lastCloseBrace;
     
-    const isInLabelMatcher = node.name === 'LabelMatcher';
-    const isInLabelValue = node.name === 'String';
-    const isInPipeline = node.name === 'PipelineExpr';
-    const isAfterOperator = node.prevSibling?.name === 'Operator';
-    
-    if (isInLabelMatcher) {
-      const labels = await fetchLabels(config);
+    if (isInsideBraces) {
+      const textInBraces = textBefore.slice(lastOpenBrace + 1);
+      const hasEquals = textInBraces.includes('=');
+      const hasComma = textInBraces.includes(',');
       
-      return {
-        from: node.from,
-        options: labels.map(label => ({
-          label,
-          type: 'label',
-          info: 'Label from Loki',
-          apply: `${label}=`
-        }))
-      };
-    }
-    
-    if (isInLabelValue && isAfterOperator) {
-      const labelMatcher = node.parent;
-      if (labelMatcher?.name === 'LabelMatcher') {
-        const labelNameNode = labelMatcher.getChild('LabelName');
-        if (labelNameNode) {
-          const labelName = state.sliceDoc(labelNameNode.from, labelNameNode.to);
-          const values = await fetchLabelValues(config, labelName);
-          
-          return {
-            from: node.from,
-            options: values.map(value => ({
-              label: `'${value}'`,
-              type: 'value',
-              info: `Value for ${labelName}`
-            }))
-          };
-        }
+      if (!hasEquals || lineBefore.trim().endsWith(',') || lineBefore.trim().endsWith('{')) {
+        console.log('Fetching labels...');
+        const labels = await config.getLabels();
+        
+        return {
+          from: pos,
+          options: labels.map(label => ({
+            label,
+            type: 'label',
+            info: 'Label from Loki',
+            apply: `${label}=`
+          }))
+        };
+      }
+      
+      const equalsMatch = lineBefore.match(/(\w+)=$/);
+      if (equalsMatch) {
+        const labelName = equalsMatch[1];
+        console.log('Fetching values for:', labelName);
+        const values = await config.getValues(labelName);
+        
+        return {
+          from: pos,
+          options: values.map(value => ({
+            label: value,
+            type: 'value',
+            info: `Value for ${labelName}`,
+            apply: `"${value}"`
+          }))
+        };
       }
     }
     
-    if (isInPipeline) {
+    const word = context.matchBefore(/\w*/);
+    if (word) {
       return {
-        from: node.from,
-        options: STATIC_COMPLETIONS.filter(c => 
-          c.type === 'keyword' || c.type === 'function'
-        )
+        from: word.from,
+        options: STATIC_COMPLETIONS
       };
     }
     
-    const word = context.matchBefore(/\w*/);
-    if (!word) return null;
-    
-    return {
-      from: word.from,
-      options: STATIC_COMPLETIONS
-    };
+    return null;
   };
 }
