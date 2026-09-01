@@ -51,37 +51,41 @@ export function createLogQLCompletionSource(config: CompletionConfig) {
     
     if (isInsideBraces) {
       const textInBraces = textBefore.slice(lastOpenBrace + 1);
-      const hasEquals = textInBraces.includes('=');
-      const hasComma = textInBraces.includes(',');
+      const currentMatcher = textInBraces.split(',').pop() || '';
+      const valueMatch = currentMatcher.match(/^\s*(\w+)\s*(?:=~|!~|!=|=)\s*("?)([^"]*)$/);
       
-      if (!hasEquals || lineBefore.trim().endsWith(',') || lineBefore.trim().endsWith('{')) {
-        console.log('Fetching labels...');
-        const labels = await config.getLabels();
+      if (valueMatch) {
+        const [, labelName, openingQuote, valuePrefix] = valueMatch;
+        const values = await config.getValues(labelName);
+        const from = pos - valuePrefix.length;
         
         return {
-          from: pos,
+          from,
+          validFor: openingQuote ? /^[^"]*$/ : /^\w*$/,
+          options: values.map(value => ({
+            label: value,
+            type: 'value',
+            info: `Value for ${labelName}`,
+            apply: openingQuote ? `${value}"` : `"${value}"`
+          }))
+        };
+      }
+
+      const labelMatch = currentMatcher.match(/(?:^|\s)([A-Za-z_]\w*)$/);
+      
+      if (!currentMatcher.includes('=') && (labelMatch || lineBefore.trim().endsWith(',') || lineBefore.trim().endsWith('{'))) {
+        console.log('Fetching labels...');
+        const labels = await config.getLabels();
+        const labelPrefix = labelMatch?.[1] || '';
+        
+        return {
+          from: pos - labelPrefix.length,
+          validFor: /^\w*$/,
           options: labels.map(label => ({
             label,
             type: 'label',
             info: 'Label from Loki',
             apply: `${label}=`
-          }))
-        };
-      }
-      
-      const equalsMatch = lineBefore.match(/(\w+)=$/);
-      if (equalsMatch) {
-        const labelName = equalsMatch[1];
-        console.log('Fetching values for:', labelName);
-        const values = await config.getValues(labelName);
-        
-        return {
-          from: pos,
-          options: values.map(value => ({
-            label: value,
-            type: 'value',
-            info: `Value for ${labelName}`,
-            apply: `"${value}"`
           }))
         };
       }
